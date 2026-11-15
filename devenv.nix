@@ -28,7 +28,7 @@
 
     apk="build/app/outputs/flutter-apk/app-debug.apk"
     test -f "$apk"
-    unzip -l "$apk" | grep -q 'lib/arm64-v8a/libcactus_jni.so'
+    unzip -Z1 "$apk" | grep -Fx 'lib/arm64-v8a/libcactus_jni.so' >/dev/null
 
     device="$(adb devices | awk 'NR > 1 && $2 == "device" { print $1; exit }')"
     if [ -z "$device" ]; then
@@ -51,8 +51,8 @@
   # and platform-tools. No emulator packages or system images.
   android = {
     enable = true;
-    platforms.version = ["34" "35"];
-    buildTools.version = ["35.0.0"];
+    platforms.version = ["34" "35" "36"];
+    buildTools.version = ["36.0.0"];
     platformTools.version = "latest";
     emulator.enable = false;
     systemImageTypes = [];

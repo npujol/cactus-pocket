@@ -40,7 +40,7 @@ dependencies:
   crypto: ^3.0.8
   image: ^4.13.1
   image_picker: 1.1.2
-  image_picker_android: 0.8.12+2
+  image_picker_android: 0.8.13+1
   flutter_plugin_android_lifecycle: 2.0.26
 
 dev_dependencies:

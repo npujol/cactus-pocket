@@ -9,7 +9,7 @@ Flutter Android app for local Cactus Mirage image descriptions. The model is sto
 - Android API 24 or later (current tested device: Xiaomi 23049PCD8G, Android 15/API 35)
 - Internet for the initial model download; allow at least 22 MB for the pinned model plus temporary download space
 
-The devenv environment provides Flutter, Java 17, Android SDK API 35, build-tools 35.0.0, platform-tools, and NDK 28.2.13676358. Emulator images are not required. Gradle uses `FLUTTER_ROOT` for the Flutter plugin and the Android SDK/NDK paths supplied by devenv. Do not add machine-specific SDK paths to `android/local.properties`.
+The devenv environment provides Flutter 3.47.4, Java 17, Android SDK Platforms 34, 35, and 36, Build Tools 36.0.0, platform-tools, and NDK 28.2.13676358. The app compiles against API 36 and targets API 35; the target SDK remains unchanged. Android Gradle Plugin 9.0.1, Kotlin Gradle Plugin 2.3.20, and Gradle wrapper 9.3.1 are pinned in the Android project. Flutter's Android dependency validation stays enabled. Emulator images are not required. Gradle uses `FLUTTER_ROOT` for the Flutter plugin and the Android SDK/NDK paths supplied by devenv. Do not add machine-specific SDK paths to `android/local.properties`.
 
 ## Build and install
 
@@ -26,7 +26,7 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 adb shell monkey -p com.cactuscompute.cactus_pocket 1
 ```
 
-`devenv shell -- test-solution` runs analysis, tests, debug APK build, ARM64 JNI packaging checks, and install/launch on the first authorized ADB device. A connected phone is needed for its final steps. No generated local SDK properties file is required.
+`devenv shell -- test-solution` runs analysis, tests, debug APK build, ARM64 JNI packaging checks, and install/launch on the first authorized ADB device. Confirm its build output has no Flutter warnings that the AGP or Kotlin plugin version will soon be unsupported. A connected phone is needed for the install/launch steps. No generated local SDK properties file is required.
 
 ## Use
 

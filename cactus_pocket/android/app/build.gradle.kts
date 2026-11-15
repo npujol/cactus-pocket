@@ -31,8 +31,8 @@ tasks.configureEach {
 
 android {
     namespace = "com.cactuscompute.cactus_pocket"
-    compileSdk = 35
-    buildToolsVersion = "35.0.0"
+    compileSdk = 36
+    buildToolsVersion = "36.0.0"
     ndkVersion = "28.2.13676358"
 
     compileOptions {
