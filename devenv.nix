@@ -38,7 +38,13 @@
 
     adb -s "$device" install -r "$apk"
     adb -s "$device" shell monkey -p com.cactuscompute.cactus_pocket 1
-    echo "Installed and launched on $device. Complete the app's online download and inference checks, then repeat in airplane mode."
+    sleep 3
+    if ! adb -s "$device" shell pidof com.cactuscompute.cactus_pocket >/dev/null; then
+      echo "App process did not remain alive after launch on $device." >&2
+      adb -s "$device" logcat -d -t 300 | grep -i 'cactus_pocket\|FATAL EXCEPTION' | tail -80 >&2 || true
+      exit 1
+    fi
+    echo "Build, APK ABI check, install, and launch verified on $device. Complete the app's online download/inference checks, then repeat in airplane mode."
   '';
 
   # Keep Android integration SDK narrow: a single compile platform, build-tools

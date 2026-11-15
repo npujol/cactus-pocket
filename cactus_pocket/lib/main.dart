@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'services/cactus_inference.dart';
@@ -38,7 +39,7 @@ class MirageHomePage extends StatefulWidget {
 }
 
 class _MirageHomePageState extends State<MirageHomePage> {
-  final _store = ModelStore();
+  final _store = ModelStore(directoryProvider: getApplicationSupportDirectory);
   final _inference = CactusInference();
   final _picker = ImagePicker();
 

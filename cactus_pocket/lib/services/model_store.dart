@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 
 const mirageModelUrl =
     'https://huggingface.co/Cactus-Compute/mirage/resolve/76c1e9e53381aca8fc3843c636216c96ff220122/mirage.cact';
@@ -21,17 +20,17 @@ class ModelStoreException implements Exception {
 class ModelStore {
   ModelStore({
     http.Client? client,
-    Future<Directory> Function()? directoryProvider,
+    required this._directoryProvider,
     this._modelUrl = mirageModelUrl,
     this._expectedSha256 = mirageModelSha256,
-  }) : _client = client ?? http.Client(),
-       _directoryProvider = directoryProvider ?? getApplicationSupportDirectory;
+  }) : _client = client ?? http.Client();
 
   final http.Client _client;
   final Future<Directory> Function() _directoryProvider;
   final String _modelUrl;
   final String _expectedSha256;
   StreamController<double>? _progressController;
+  Future<File>? _downloadTask;
   IOSink? _activeSink;
   bool _cancelled = false;
 
@@ -48,7 +47,13 @@ class ModelStore {
     return await _sha256(file) == _expectedSha256;
   }
 
-  Future<File> download({void Function(double progress)? onProgress}) async {
+  Future<File> download({void Function(double progress)? onProgress}) {
+    return _downloadTask ??= _download(onProgress: onProgress).whenComplete(() {
+      _downloadTask = null;
+    });
+  }
+
+  Future<File> _download({void Function(double progress)? onProgress}) async {
     final readyFile = await modelFile;
     if (await isReady()) return readyFile;
 
@@ -100,7 +105,7 @@ class ModelStore {
       await _activeSink?.close();
       _activeSink = null;
       if (await tempFile.exists()) await tempFile.delete();
-      await controller.close();
+      controller.close();
       _progressController = null;
     }
   }
