@@ -6,7 +6,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const channel = MethodChannel('com.cactuscompute.cactus_pocket/mirage');
-  final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   final inference = CactusInference(channel: channel);
 
   tearDown(() => messenger.setMockMethodCallHandler(channel, null));
@@ -19,7 +20,13 @@ void main() {
     });
     await expectLater(
       inference.describe(rgb: Uint8List(2), width: 1, height: 1),
-      throwsA(isA<CactusInferenceException>().having((e) => e.code, 'code', 'invalid_image')),
+      throwsA(
+        isA<CactusInferenceException>().having(
+          (e) => e.code,
+          'code',
+          'invalid_image',
+        ),
+      ),
     );
     expect(called, isFalse);
   });
@@ -30,7 +37,9 @@ void main() {
       expect(call.arguments['rgb'], Uint8List.fromList([1, 2, 3, 4, 5, 6]));
       expect(call.arguments['width'], 2);
       expect(call.arguments['height'], 1);
-      expect(call.arguments['options'], {'sections': ['objects']});
+      expect(call.arguments['options'], {
+        'sections': ['objects'],
+      });
       return '{"scene":{}}';
     });
     expect(
@@ -38,7 +47,9 @@ void main() {
         rgb: Uint8List.fromList([1, 2, 3, 4, 5, 6]),
         width: 2,
         height: 1,
-        options: const {'sections': ['objects']},
+        options: const {
+          'sections': ['objects'],
+        },
       ),
       '{"scene":{}}',
     );
@@ -50,9 +61,11 @@ void main() {
     });
     await expectLater(
       inference.loadModel(Uint8List.fromList([1])),
-      throwsA(isA<CactusInferenceException>()
-          .having((e) => e.code, 'code', 'native_failure')
-          .having((e) => e.message, 'message', 'bad model')),
+      throwsA(
+        isA<CactusInferenceException>()
+            .having((e) => e.code, 'code', 'native_failure')
+            .having((e) => e.message, 'message', 'bad model'),
+      ),
     );
   });
 }

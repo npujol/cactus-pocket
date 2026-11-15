@@ -12,23 +12,33 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "loadModel" -> {
                         val model = call.argument<ByteArray>("model")
-                        if (model == null) result.error("invalid_model", "Model bytes are missing", null)
-                        else inferenceExecutor.execute {
-                            try {
-                                val error = native.loadModel(model)
-                                runOnUiThread {
-                                    if (error == null) result.success(true)
-                                    else result.error("model_load_failed", error, null)
+                        if (model == null) {
+                            result.error("invalid_model", "Model bytes are missing", null)
+                        } else {
+                            inferenceExecutor.execute {
+                                try {
+                                    val error = native.loadModel(model)
+                                    runOnUiThread {
+                                        if (error == null) {
+                                            result.success(true)
+                                        } else {
+                                            result.error("model_load_failed", error, null)
+                                        }
+                                    }
+                                } catch (error: Throwable) {
+                                    runOnUiThread { result.error("model_load_failed", error.message, null) }
                                 }
-                            } catch (error: Throwable) {
-                                runOnUiThread { result.error("model_load_failed", error.message, null) }
                             }
                         }
                     }
-                    "isModelReady" -> inferenceExecutor.execute {
-                        val ready = native.isModelReady()
-                        runOnUiThread { result.success(ready) }
+
+                    "isModelReady" -> {
+                        inferenceExecutor.execute {
+                            val ready = native.isModelReady()
+                            runOnUiThread { result.success(ready) }
+                        }
                     }
+
                     "describe" -> {
                         val rgb = call.argument<ByteArray>("rgb")
                         val width = call.argument<Int>("width")
@@ -49,14 +59,19 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                     }
-                    else -> result.notImplemented()
+
+                    else -> {
+                        result.notImplemented()
+                    }
                 }
             }
     }
 
     companion object {
         private const val CHANNEL = "com.cactuscompute.cactus_pocket/mirage"
-        private val inferenceExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+        private val inferenceExecutor =
+            java.util.concurrent.Executors
+                .newSingleThreadExecutor()
         private val native by lazy { CactusNative() }
     }
 }

@@ -13,7 +13,7 @@ class CactusInferenceException implements Exception {
 /// Flutter facade for the app's serialized Android Cactus Mirage bridge.
 class CactusInference {
   CactusInference({MethodChannel? channel})
-      : _channel = channel ?? const MethodChannel(_channelName);
+    : _channel = channel ?? const MethodChannel(_channelName);
 
   static const _channelName = 'com.cactuscompute.cactus_pocket/mirage';
   final MethodChannel _channel;
@@ -22,7 +22,10 @@ class CactusInference {
     try {
       await _channel.invokeMethod<void>('loadModel', {'model': bytes});
     } on PlatformException catch (error) {
-      throw CactusInferenceException(error.code, error.message ?? 'Model loading failed');
+      throw CactusInferenceException(
+        error.code,
+        error.message ?? 'Model loading failed',
+      );
     }
   }
 
@@ -30,7 +33,10 @@ class CactusInference {
     try {
       return await _channel.invokeMethod<bool>('isModelReady') ?? false;
     } on PlatformException catch (error) {
-      throw CactusInferenceException(error.code, error.message ?? 'Unable to query model state');
+      throw CactusInferenceException(
+        error.code,
+        error.message ?? 'Unable to query model state',
+      );
     }
   }
 
@@ -58,11 +64,17 @@ class CactusInference {
         'keywords': keywords,
       });
       if (result == null) {
-        throw const CactusInferenceException('empty_response', 'Native inference returned no response');
+        throw const CactusInferenceException(
+          'empty_response',
+          'Native inference returned no response',
+        );
       }
       return result;
     } on PlatformException catch (error) {
-      throw CactusInferenceException(error.code, error.message ?? 'Image inference failed');
+      throw CactusInferenceException(
+        error.code,
+        error.message ?? 'Image inference failed',
+      );
     }
   }
 }

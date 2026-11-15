@@ -24,8 +24,8 @@ class ModelStore {
     Future<Directory> Function()? directoryProvider,
     this._modelUrl = mirageModelUrl,
     this._expectedSha256 = mirageModelSha256,
-  })  : _client = client ?? http.Client(),
-        _directoryProvider = directoryProvider ?? getApplicationSupportDirectory;
+  }) : _client = client ?? http.Client(),
+       _directoryProvider = directoryProvider ?? getApplicationSupportDirectory;
 
   final http.Client _client;
   final Future<Directory> Function() _directoryProvider;
@@ -63,7 +63,9 @@ class ModelStore {
       final request = http.Request('GET', Uri.parse(_modelUrl));
       final response = await _client.send(request);
       if (response.statusCode != HttpStatus.ok) {
-        throw ModelStoreException('Model server returned HTTP ${response.statusCode}');
+        throw ModelStoreException(
+          'Model server returned HTTP ${response.statusCode}',
+        );
       }
       final total = response.contentLength ?? 0;
       var received = 0;
@@ -91,7 +93,9 @@ class ModelStore {
       controller.add(1.0);
       return readyFile;
     } on FileSystemException catch (error) {
-      throw ModelStoreException('Unable to store Mirage model: ${error.message}');
+      throw ModelStoreException(
+        'Unable to store Mirage model: ${error.message}',
+      );
     } finally {
       await _activeSink?.close();
       _activeSink = null;

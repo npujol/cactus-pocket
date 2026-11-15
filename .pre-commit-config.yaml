@@ -1,0 +1,31 @@
+minimum_prek_version: 0.5.10
+
+repos:
+  - repo: local
+    hooks:
+      - id: dart-format
+        name: Dart format
+        entry: bash -c 'cd cactus_pocket && dart format lib test'
+        language: system
+        types: [dart]
+        pass_filenames: false
+
+      - id: flutter-analyze
+        name: Flutter analyze
+        entry: bash -c 'cd cactus_pocket && flutter analyze --no-pub --no-fatal-infos --no-fatal-warnings'
+        language: system
+        types: [dart]
+        pass_filenames: false
+
+      - id: ktlint
+        name: Kotlin lint and format check
+        entry: bash -c 'ktlint --format --relative --color never || ktlint --relative --color never'
+        language: system
+        types: [kotlin]
+
+      - id: detekt
+        name: Kotlin static analysis
+        entry: bash -c 'cd cactus_pocket/android && detekt --config detekt.yml --input app/src/main/kotlin'
+        language: system
+        types: [kotlin]
+        pass_filenames: false

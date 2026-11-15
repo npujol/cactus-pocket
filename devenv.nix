@@ -5,6 +5,9 @@
     android-tools
     git
     curl
+    prek
+    ktlint
+    detekt
   ];
 
   languages.java.enable = true;
