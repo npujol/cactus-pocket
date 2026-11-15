@@ -37,9 +37,7 @@ void main() {
       expect(call.arguments['rgb'], Uint8List.fromList([1, 2, 3, 4, 5, 6]));
       expect(call.arguments['width'], 2);
       expect(call.arguments['height'], 1);
-      expect(call.arguments['options'], {
-        'sections': ['objects'],
-      });
+      expect(call.arguments['options'], '{"sections":["objects"]}');
       return '{"scene":{}}';
     });
     expect(
@@ -52,6 +50,34 @@ void main() {
         },
       ),
       '{"scene":{}}',
+    );
+  });
+
+  test('loads a model and queries bridge readiness', () async {
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'loadModel') {
+        expect(call.arguments['model'], Uint8List.fromList([7, 8]));
+        return true;
+      }
+      expect(call.method, 'isModelReady');
+      return false;
+    });
+
+    await inference.loadModel(Uint8List.fromList([7, 8]));
+    expect(await inference.isModelReady(), isFalse);
+  });
+
+  test('rejects an empty native response', () async {
+    messenger.setMockMethodCallHandler(channel, (call) async => null);
+    await expectLater(
+      inference.describe(rgb: Uint8List(3), width: 1, height: 1),
+      throwsA(
+        isA<CactusInferenceException>().having(
+          (e) => e.code,
+          'code',
+          'empty_response',
+        ),
+      ),
     );
   });
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -53,9 +54,11 @@ void main() {
       expectedSha256: digest,
     );
 
-    final file = await store.download();
+    final progress = <double>[];
+    final file = await store.download(onProgress: progress.add);
     expect(await file.readAsString(), bytes);
     expect(await store.isReady(), isTrue);
+    expect(progress.last, 1.0);
     expect(await File('${file.path}.part').exists(), isFalse);
     store.dispose();
   });
@@ -77,6 +80,42 @@ void main() {
       store.dispose();
     },
   );
+
+  test('cancels a stalled response and removes its partial file', () async {
+    final subscribed = Completer<void>();
+    final canceled = Completer<void>();
+    final body = StreamController<List<int>>(
+      onListen: subscribed.complete,
+      onCancel: canceled.complete,
+    );
+    final client = _FixtureClient(
+      (_) async => http.StreamedResponse(body.stream, 200, contentLength: 100),
+    );
+    final store = ModelStore(
+      client: client,
+      directoryProvider: () async => temp,
+      modelUrl: 'https://example.test/model.cact',
+      expectedSha256: digest,
+    );
+
+    final download = store.download();
+    await subscribed.future;
+    await store.cancel();
+    await expectLater(
+      download,
+      throwsA(
+        isA<ModelStoreException>().having(
+          (error) => error.message,
+          'message',
+          'Download cancelled',
+        ),
+      ),
+    );
+    await canceled.future;
+    expect(await store.isReady(), isFalse);
+    expect(await temp.list().toList(), isEmpty);
+    store.dispose();
+  });
 
   test('rejects non-200 responses and allows retry', () async {
     var requests = 0;

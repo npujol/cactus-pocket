@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
 
 class CactusInferenceException implements Exception {
@@ -59,7 +61,7 @@ class CactusInference {
         'rgb': rgb,
         'width': width,
         'height': height,
-        'options': options,
+        'options': jsonEncode(options),
         'language': language,
         'keywords': keywords,
       });

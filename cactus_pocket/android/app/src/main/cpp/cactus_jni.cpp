@@ -21,6 +21,13 @@ std::string lastError() {
 jstring toJavaString(JNIEnv* env, const std::string& value) {
   return env->NewStringUTF(value.c_str());
 }
+
+void throwJavaException(JNIEnv* env, const char* className, const std::string& message) {
+  jclass exceptionClass = env->FindClass(className);
+  if (exceptionClass == nullptr) return;
+  env->ThrowNew(exceptionClass, message.c_str());
+  env->DeleteLocalRef(exceptionClass);
+}
 }  // namespace
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -62,11 +69,15 @@ Java_com_cactuscompute_cactus_1pocket_CactusNative_describe(
     JNIEnv* env, jobject /* thiz */, jbyteArray rgbBytes, jint width, jint height,
     jstring optionsValue, jstring languageValue, jstring keywordsValue) {
   if (rgbBytes == nullptr || width <= 0 || height <= 0) {
-    return toJavaString(env, "Image RGB data and positive dimensions are required");
+    throwJavaException(env, "java/lang/IllegalArgumentException",
+                       "Image RGB data and positive dimensions are required");
+    return nullptr;
   }
   const jlong expected = static_cast<jlong>(width) * height * 3;
   if (expected <= 0 || expected != env->GetArrayLength(rgbBytes)) {
-    return toJavaString(env, "Packed RGB byte count must equal width * height * 3");
+    throwJavaException(env, "java/lang/IllegalArgumentException",
+                       "Packed RGB byte count must equal width * height * 3");
+    return nullptr;
   }
 
   auto readString = [env](jstring value, const char* fallback) -> std::string {
@@ -88,14 +99,19 @@ Java_com_cactuscompute_cactus_1pocket_CactusNative_describe(
 
   std::vector<char> output(kOutputCapacity, '\0');
   std::lock_guard<std::mutex> lock(gEngineMutex);
-  if (!gModelReady) return toJavaString(env, "Mirage model is not loaded; download and load it first");
+  if (!gModelReady) {
+    throwJavaException(env, "java/lang/IllegalStateException",
+                       "Mirage model is not loaded; download and load it first");
+    return nullptr;
+  }
 
   const int result = cactus_describe(rgb.data(), width, height, options.c_str(), language.c_str(),
                                      keywords.c_str(), output.data(), static_cast<int>(output.size()));
   if (result < 0) {
     const auto error = lastError();
     __android_log_print(ANDROID_LOG_ERROR, kTag, "cactus_describe failed: %s", error.c_str());
-    return toJavaString(env, error);
+    throwJavaException(env, "java/lang/IllegalStateException", error);
+    return nullptr;
   }
   return toJavaString(env, std::string(output.data()));
 }

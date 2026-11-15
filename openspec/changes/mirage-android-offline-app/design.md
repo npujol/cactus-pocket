@@ -2,7 +2,7 @@
 
 ## Context
 
-The repository contains a generated Flutter Android starter and a devenv environment. The starter has previously been built, installed, and launched on a Xiaomi 23049PCD8G (Android 15/API 35, ARM64), but the committed SDK/NDK setup is not proven reproducible. `cactus_pocket/android/local.properties` exists locally but is ignored and contains machine-specific `/nix/store` paths. `devenv.nix` pins Android platform/build-tools and an NDK version, while `ndk.enable` is false; actual Gradle SDK/NDK discovery and availability must be verified. Mirage inference is not implemented.
+The repository now contains the Flutter Android Mirage app and a devenv environment. The app has been built, installed, and exercised on a Xiaomi 23049PCD8G (Android 15/API 35, ARM64). Gradle resolves Flutter from `FLUTTER_ROOT` and Android SDK/NDK from devenv; build and install succeeded without relying on machine-specific SDK paths in `local.properties`. The app includes private model storage, the JNI bridge, gallery input, local inference, and result/error UI.
 
 Research identifies Cactus runtime 4.1.1 (`releases/4.1.1/android-arm64`, HF revision `d2c5cd70432ed78345f3ba6b620bff2feeec6c86`) and Mirage model revision `76c1e9e53381aca8fc3843c636216c96ff220122`. Their pinned hashes and Apache-2.0 licenses are recorded in tasks.md. The matching header declares `cactus_load`, `cactus_models`, `cactus_last_error`, and `cactus_describe`; the static archive exports all four. Cactus source pins this exact runtime/model pair for Mirage. The official Flutter plugin has a custom license limited to qualifying personal/non-commercial use, and does not expose the dedicated describe API; it is not reused.
 
@@ -37,10 +37,23 @@ A temporary NDK 28.2 harness confirms the runtime/model pair on the target phone
 
 ## Risks / Trade-offs
 
-- On-device runtime/model compatibility is demonstrated by the temporary smoke test. Remaining integration risks include ABI packaging/link flags, memory/latency under app lifecycle, and image conversion correctness on gallery photos.
+- Runtime/model compatibility and the integrated app flow are demonstrated on the target phone, including an actual gallery inference after relaunch in airplane mode. Memory/latency observations are limited to the measurements below; no peak-memory or thermal-soak profile was taken.
 - NDK path/version mismatch is a known build risk; the NDK must actually be present and Gradle-accessible without hard-coded machine paths.
-- Device memory, thermal behavior and latency are unknown; model loading does not guarantee usable interactive inference.
+- Inference latency varies with device load and image dimensions. The recorded native timing comes from a 512x512 harness call; the Flutter end-to-end path was verified for correctness but not separately instrumented. The memory values below are snapshots, not peak measurements.
 - Image decode/color/orientation mistakes can silently corrupt input; test conversion using deterministic fixtures and phone inference.
 - Model checksums and versions can change upstream; pin them explicitly and make upgrades deliberate.
 - Flutter debug transport may drop after launch on the device; report app health separately.
-- Airplane-mode validation must test an actual inference after relaunch, not just app startup or cached output.
+- The app asks for no inference-time network service; model acquisition is the only app network flow. A failed offline model download was recovered after Wi-Fi returned.
+
+## Device Acceptance Results
+
+Validated on Xiaomi 23049PCD8G (`marble`), Android 15 / API 35, `arm64-v8a`; build environment used Java 17, Gradle 9.3.1, Android build-tools 35.0.0, and NDK 28.2.13676358. No emulator was used.
+
+- Model: Mirage revision `76c1e9e53381aca8fc3843c636216c96ff220122`, 21,611,043 bytes, SHA-256 `4249a0f7515272ff76b9414bec17d7e7daf84b15b66c7fb4f17fce1e66f9f237`.
+- Downloaded in-app while Wi-Fi was validated; the promoted file matched the pinned digest. A subsequent force-stop/relaunch showed the model ready and loaded from app-private storage.
+- Failure recovery: with airplane mode on and the model file temporarily absent, download failed with a host-lookup error, displayed a retry action, and left no `.part` or ready model. Wi-Fi restoration and retry downloaded and verified the model.
+- Gallery fixture: Cactus Compute logo `https://cactuscompute.com/assets/cactus_white.png`, original SHA-256 `ceb154d0478940e6a8cf20de22a597b34a2e921211ddc8d701e5073828c1c56c`. The original 896x880 image was selected in-app; a fresh result displayed `white · minimalist` and raw JSON.
+- Offline acceptance: after relaunch with airplane mode enabled and no available network, the same gallery image produced a fresh `white · minimalist` description. Airplane mode was confirmed active; the on-device model digest remained unchanged.
+- Native harness timing on this phone: model load 38 ms; 512x512 `cactus_describe` call returned code 110 in 273 ms. These are native-call measurements, not end-to-end Flutter timings.
+- Storage: Android reported 9.2 GB available on `/data` around model acquisition; model size was 21.6 MB. This is the observed free-space value, not a derived minimum requirement.
+- `dumpsys meminfo` after app inference showed about 439,726 KB total PSS and 164,881 KB native heap. These are one post-inference snapshot; peak memory, sustained thermal behavior, and low-storage behavior were not profiled.

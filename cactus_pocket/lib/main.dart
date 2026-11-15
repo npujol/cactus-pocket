@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -7,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'services/cactus_inference.dart';
 import 'services/image_rgb.dart';
+import 'services/mirage_response.dart';
 import 'services/model_store.dart';
 
 void main() => runApp(const MirageApp());
@@ -94,6 +94,14 @@ class _MirageHomePageState extends State<MirageHomePage> {
       if (!mounted) return;
       setState(() => _modelStatus = _ModelStatus.verifying);
       await _loadModel(file);
+    } on ModelStoreException catch (error) {
+      if (mounted) {
+        setState(() {
+          final cancelled = error.message == 'Download cancelled';
+          _modelStatus = cancelled ? _ModelStatus.absent : _ModelStatus.failed;
+          _error = cancelled ? null : error.message;
+        });
+      }
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -102,22 +110,15 @@ class _MirageHomePageState extends State<MirageHomePage> {
         });
       }
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _busy = false;
         });
+      }
     }
   }
 
-  Future<void> _cancelDownload() async {
-    await _store.cancel();
-    if (mounted)
-      setState(() {
-        _modelStatus = _ModelStatus.absent;
-        _busy = false;
-        _downloadProgress = null;
-      });
-  }
+  Future<void> _cancelDownload() => _store.cancel();
 
   Future<void> _loadModel(File file) async {
     setState(() {
@@ -130,11 +131,12 @@ class _MirageHomePageState extends State<MirageHomePage> {
       await _inference.loadModel(bytes);
       if (mounted) setState(() => _modelStatus = _ModelStatus.ready);
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _modelStatus = _ModelStatus.failed;
           _error = '$error';
         });
+      }
       rethrow;
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -177,21 +179,11 @@ class _MirageHomePageState extends State<MirageHomePage> {
         width: decoded.width,
         height: decoded.height,
       );
-      final result = jsonDecode(raw) as Map<String, dynamic>;
-      final scene = result['scene'];
-      final reasoning = result['reasoning'];
-      final description = scene is Map
-          ? [
-              scene['background'],
-              scene['style'],
-            ].whereType<String>().join(' · ')
-          : '';
+      final response = parseMirageResponse(raw);
       if (mounted) {
         setState(() {
-          _rawJson = const JsonEncoder.withIndent('  ').convert(result);
-          _description = description.isNotEmpty
-              ? description
-              : (reasoning is String ? reasoning : 'Mirage returned a result.');
+          _rawJson = response.rawJson;
+          _description = response.description;
         });
       }
     } on CactusInferenceException catch (error) {
@@ -199,10 +191,11 @@ class _MirageHomePageState extends State<MirageHomePage> {
         setState(() => _error = error.message);
       }
     } on FormatException catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = 'Mirage returned invalid JSON: ${error.message}',
         );
+      }
     } catch (error) {
       if (mounted) setState(() => _error = 'Inference failed: $error');
     } finally {

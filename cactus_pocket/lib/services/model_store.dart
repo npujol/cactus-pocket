@@ -32,6 +32,7 @@ class ModelStore {
   StreamController<double>? _progressController;
   Future<File>? _downloadTask;
   IOSink? _activeSink;
+  Completer<void>? _abortController;
   bool _cancelled = false;
 
   Stream<double>? get progress => _progressController?.stream;
@@ -54,18 +55,28 @@ class ModelStore {
   }
 
   Future<File> _download({void Function(double progress)? onProgress}) async {
-    final readyFile = await modelFile;
-    if (await isReady()) return readyFile;
-
     _cancelled = false;
+    final abortController = Completer<void>();
+    _abortController = abortController;
+    final readyFile = await modelFile;
+    if (await isReady()) {
+      _abortController = null;
+      return readyFile;
+    }
+
     final tempFile = File('${readyFile.path}.part');
-    await tempFile.parent.create(recursive: true);
-    if (await tempFile.exists()) await tempFile.delete();
     final controller = StreamController<double>();
     _progressController = controller;
 
     try {
-      final request = http.Request('GET', Uri.parse(_modelUrl));
+      await tempFile.parent.create(recursive: true);
+      if (await tempFile.exists()) await tempFile.delete();
+      if (_cancelled) throw const ModelStoreException('Download cancelled');
+      final request = http.AbortableRequest(
+        'GET',
+        Uri.parse(_modelUrl),
+        abortTrigger: abortController.future,
+      );
       final response = await _client.send(request);
       if (response.statusCode != HttpStatus.ok) {
         throw ModelStoreException(
@@ -75,15 +86,28 @@ class ModelStore {
       final total = response.contentLength ?? 0;
       var received = 0;
       _activeSink = tempFile.openWrite();
-      await for (final chunk in response.stream) {
-        if (_cancelled) throw const ModelStoreException('Download cancelled');
-        _activeSink!.add(chunk);
-        received += chunk.length;
-        if (total > 0) {
-          final value = received / total;
-          controller.add(value);
-          onProgress?.call(value);
+      final iterator = StreamIterator<List<int>>(response.stream);
+      try {
+        while (true) {
+          final hasChunk = await Future.any<bool>([
+            iterator.moveNext(),
+            abortController.future.then((_) => false),
+          ]);
+          if (_cancelled) {
+            throw const ModelStoreException('Download cancelled');
+          }
+          if (!hasChunk) break;
+          final chunk = iterator.current;
+          _activeSink!.add(chunk);
+          received += chunk.length;
+          if (total > 0) {
+            final value = received / total;
+            controller.add(value);
+            onProgress?.call(value);
+          }
         }
+      } finally {
+        await iterator.cancel();
       }
       await _activeSink!.flush();
       await _activeSink!.close();
@@ -99,22 +123,29 @@ class ModelStore {
       return readyFile;
     } on FileSystemException catch (error) {
       throw ModelStoreException(
-        'Unable to store Mirage model: ${error.message}',
+        'Unable to store Mirage model (check available storage): ${error.message}',
       );
+    } catch (error) {
+      if (_cancelled) {
+        throw const ModelStoreException('Download cancelled');
+      }
+      rethrow;
     } finally {
       await _activeSink?.close();
       _activeSink = null;
       if (await tempFile.exists()) await tempFile.delete();
       controller.close();
       _progressController = null;
+      if (identical(_abortController, abortController)) _abortController = null;
     }
   }
 
   Future<void> cancel() async {
     _cancelled = true;
-    await _activeSink?.flush();
-    await _activeSink?.close();
-    _activeSink = null;
+    final abortController = _abortController;
+    if (abortController != null && !abortController.isCompleted) {
+      abortController.complete();
+    }
   }
 
   Future<String> _sha256(File file) async {

@@ -18,8 +18,9 @@ class DecodedRgbImage {
 /// white, and returns packed row-major RGB888 as required by `cactus_describe`.
 DecodedRgbImage decodeToRgb(Uint8List encoded) {
   final decoded = img.decodeImage(encoded);
-  if (decoded == null)
+  if (decoded == null) {
     throw const FormatException('Unsupported or corrupt image');
+  }
   final oriented = img.bakeOrientation(decoded);
   final rgb = img.Image(
     width: oriented.width,
