@@ -1,0 +1,25 @@
+# devenv and direnv state
+.devenv/
+.direnv/
+.android/
+
+# Flutter / Dart generated files
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Android machine-specific config and generated reports
+**/local.properties
+**/.gradle/
+**/captures/
+**/GeneratedPluginRegistrant.java
+**/build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
