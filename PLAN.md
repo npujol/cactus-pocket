@@ -33,7 +33,9 @@ Build a Flutter Android app in `/home/nainai/projects/cactus-pocket` that runs *
 - [ ] Keep a stable Flutter debug connection to the phone; `flutter run` has reported device connection loss even though the installed app launched.
 - [ ] No Mirage model, runtime bridge, image input, or inference UI is implemented.
 
-## Implementation steps
+## Implementation plan
+
+The active implementation proposal, requirements, design, and task checklist are maintained as an OpenSpec change: [`openspec/changes/mirage-android-offline-app/`](openspec/changes/mirage-android-offline-app/). Use those artifacts as the source of truth for implementation; this file retains research notes and current project status.
 
 1. **Stabilize the development baseline**
    - Inspect the committed devenv and Flutter Android configuration; remove reliance on untracked machine-specific paths such as `android/local.properties`.
