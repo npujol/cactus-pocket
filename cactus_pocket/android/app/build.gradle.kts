@@ -4,6 +4,31 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val buildCactusNative by tasks.registering(Exec::class) {
+    val ndkRoot = System.getenv("ANDROID_NDK_ROOT") ?: error("ANDROID_NDK_ROOT is required in devenv")
+    val jniDir = layout.projectDirectory.dir("src/main/jni").asFile
+    val jniLibsDir = layout.projectDirectory.dir("src/main/jniLibs").asFile
+    inputs.files(fileTree("src/main/jni"), fileTree("src/main/cpp"), fileTree("src/main/native-libs"))
+    outputs.file(jniLibsDir.resolve("arm64-v8a/libcactus_jni.so"))
+    doFirst {
+        jniLibsDir.mkdirs()
+        commandLine(
+            "$ndkRoot/ndk-build",
+            "NDK_PROJECT_PATH=.",
+            "APP_BUILD_SCRIPT=Android.mk",
+            "NDK_APPLICATION_MK=Application.mk",
+            "NDK_LIBS_OUT=${jniLibsDir.absolutePath}",
+            "NDK_OUT=${layout.buildDirectory.dir("ndk").get().asFile.absolutePath}",
+            "-j4",
+        )
+        workingDir = jniDir
+    }
+}
+
+tasks.configureEach {
+    if (name.startsWith("pre") && name.endsWith("Build")) dependsOn(buildCactusNative)
+}
+
 android {
     namespace = "com.cactuscompute.cactus_pocket"
     compileSdk = 35
@@ -28,6 +53,9 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     buildTypes {

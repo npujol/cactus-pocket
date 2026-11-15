@@ -7,7 +7,7 @@ Let a user provide a photo to Cactus Mirage and inspect the model's scene descri
 ## ADDED Requirements
 
 ### Requirement: Image input
-The app MUST let the user select an image from the device gallery. Camera capture MAY be added after the gallery flow is validated. Image orientation and decode failures MUST be handled explicitly.
+The MVP MUST let the user select an image from the device gallery. Camera capture is out of scope for this change. Image orientation and decode failures MUST be handled explicitly.
 
 #### Scenario: Select a gallery image
 - **WHEN** the user selects a supported image
@@ -24,5 +24,6 @@ The app MUST show the returned scene description and provide access to the raw s
 After the model has been downloaded and verified, image inference MUST succeed without network access, and the app MUST NOT make inference-time HTTP/cloud calls.
 
 #### Scenario: Run inference in airplane mode
-- **WHEN** a verified model is present and the phone is in airplane mode
-- **THEN** the app can run inference on a selected local image and show its result without network access
+- **WHEN** the model is downloaded and verified, the app is relaunched, airplane mode is enabled, and the documented local test image is selected
+- **THEN** inference completes and displays a result without network access
+- **AND** verification records device/Android version, runtime/model revisions, test-image identity, model load time, inference latency, observed memory behavior and any limitations

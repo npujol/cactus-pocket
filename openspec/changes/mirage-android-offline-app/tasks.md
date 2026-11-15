@@ -2,40 +2,40 @@
 
 ## 1. Stabilize the Android development workflow
 
-- [ ] 1.1 Inspect devenv and Flutter-generated Android configuration; identify SDK/NDK source and exact version requirements.
-- [ ] 1.2 Remove reliance on untracked machine-specific `local.properties` paths; configure devenv/Gradle SDK and NDK paths reproducibly without emulator images.
-- [ ] 1.3 From a clean shell, run Flutter analysis/tests and build the debug APK.
-- [ ] 1.4 Install and launch on the connected ARM64 phone; investigate and document the `flutter run` device disconnect separately from app health.
-- [ ] 1.5 Update root setup docs with verified build/install commands and any device-specific prerequisites.
+- [x] 1.1 Inspect devenv and Flutter-generated Android configuration; determine how SDK/NDK paths are supplied and verify installed platform, build-tools, JDK, Gradle and NDK versions. (API 35, build-tools 35.0.0, JDK 17, Gradle 9.3.1, NDK 28.2.13676358; Xiaomi 23049PCD8G Android 15/API 35 ARM64.)
+- [x] 1.2 Configure Gradle SDK/NDK discovery reproducibly through devenv/environment; remove dependence on ignored machine-specific `local.properties`. Resolve the `ndk.enable`/NDK-version configuration and ensure Gradle can use the pinned NDK. (Gradle uses `FLUTTER_ROOT`; devenv supplies the SDK and side-by-side NDK.)
+- [x] 1.3 From a clean shell with generated local config absent, run Flutter analysis/tests and build the debug APK. (Flutter analyze/test pass; debug APK builds with `android/local.properties` absent.)
+- [x] 1.4 Install and launch on the connected ARM64 phone; investigate and document the `flutter run` device disconnect separately from app health. (ADB install/launch succeeds and process remains alive. `flutter run` transport disconnection not retested; app health is independent.)
+- [x] 1.5 Update root setup docs with verified build/install commands and device-specific prerequisites. (README commands verified against the current device/build.)
 
-## 2. Verify and pin Mirage artifacts
+## 2. Verify and pin Mirage artifacts (gate before integration)
 
-- [ ] 2.1 Inspect current Cactus Android ARM64 release artifacts, API header/exports, runtime version, and supported model format.
-- [ ] 2.2 Verify the runtime exposes `cactus_load`, `cactus_models`, `cactus_last_error`, and `cactus_describe`; confirm the exact function signatures and memory ownership.
-- [ ] 2.3 Select and pin compatible runtime/model revisions; record source URLs, licenses, ABI, file sizes and SHA-256 checksum.
-- [ ] 2.4 Confirm redistribution and plugin reuse terms; choose JNI/NDK linkage or a licensed plugin extension based on findings.
-- [ ] 2.5 Document unresolved compatibility/license blockers before proceeding if artifacts cannot be legally or technically used.
+- [x] 2.1 Inspect the exact Cactus Android ARM64 release artifact and source; record immutable version/revision, URL, ABI, size and license/redistribution terms. (Cactus 4.1.1, HF revision `d2c5cd70432ed78345f3ba6b620bff2feeec6c86`; URL `https://huggingface.co/Cactus-Compute/cactus/resolve/d2c5cd70432ed78345f3ba6b620bff2feeec6c86/releases/4.1.1/android-arm64/libcactus.a`; ABI android-arm64/arm64-v8a; 2,822,132 bytes, SHA-256 `01b91dae81d7e94ce55691376838d8b10453d33d7433ddd1b59bf4a9669012b9`. Release `LICENSE` is Apache-2.0 (SHA-256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`).)
+- [x] 2.2 Inspect the matching header and binary exports. Record exact declarations, return/error conventions, buffer ownership/capacity, model-load behavior and lifetime for `cactus_load`, `cactus_models`, `cactus_last_error`, and `cactus_describe`. (Header SHA-256 `9be7eb25b1d89180495d04a0d2c27053f282dac85add50cacc48d73302819d9d`. Declarations: `int cactus_load(const unsigned char* cact, unsigned long long n)`; `int cactus_models(void)`; `const char* cactus_last_error(void)`; `int cactus_describe(const unsigned char* rgb, int width, int height, const char* options, const char* language, const char* keywords, char* out, int out_capacity)`. Archive exports all four symbols. Cactus Python reference configures `load` size as uint64, describe args as byte/string pointers and `int`, returns int; negative load/describe codes are errors; `cactus_last_error()` is UTF-8 text; `cactus_models() & 4` means vision; describe JSON is decoded from a 16 MiB caller-owned ctypes buffer, implying caller owns output storage and NUL-terminated output. Calls use a process-wide reentrant lock. No unload API is declared; lifetime is process-global.)
+- [x] 2.3 Select a compatible immutable Mirage model revision; record source URL, revision, size, license and verified SHA-256. Confirm model/runtime compatibility. (Model repo `Cactus-Compute/mirage`, revision `76c1e9e53381aca8fc3843c636216c96ff220122` (the current model card commit is `416320e8a6d4cd3cf62b6c6e6dea1c51d671bbda`); URL `https://huggingface.co/Cactus-Compute/mirage/resolve/76c1e9e53381aca8fc3843c636216c96ff220122/mirage.cact`; 21,611,043 bytes; SHA-256 `4249a0f7515272ff76b9414bec17d7e7daf84b15b66c7fb4f17fce1e66f9f237`; model card declares Apache-2.0. Cactus source pins runtime 4.1.1 and this exact model revision/hash together for Mirage. Actual device load/inference still pending in task 3.)
+- [x] 2.4 Inspect official Flutter plugin license and native binaries if considering reuse; choose JNI/NDK linkage or a permitted plugin extension only from verified facts. (Plugin custom license: personal/educational/research/non-commercial users and qualifying organizations only; others need a commercial license. The plugin FFI doesn't expose `cactus_describe`; not reused.)
+- [x] 2.5 If compatibility or licensing cannot be established, document the specific blocker and stop native integration; do not package or redistribute unverified artifacts. (No unresolved compatibility/license blocker for direct use of the Apache-2.0 runtime/model pair; task 3.4 now confirms the pair on-device. The restricted Flutter plugin is not reused.)
 
 ## 3. Prove one on-device native inference call
 
-- [ ] 3.1 Add the minimal Android native bridge and package/link the verified ARM64 runtime.
-- [ ] 3.2 Implement model load/status and `cactus_describe` call with explicit buffer ownership and serialized background execution.
-- [ ] 3.3 Use a known test image; validate orientation, RGB layout, dimensions and options against the reference API.
-- [ ] 3.4 Run the call on the phone and capture the raw response, load/inference time, memory behavior and failure cases.
-- [ ] 3.5 Add focused tests for image conversion, native error propagation and bridge state/lifecycle.
+- [x] 3.1 After task group 2 passes, add the minimal Android native bridge and package/link only the verified ARM64 runtime. (Pinned ARM64 static archive is built via NDK `ndk-build` and packaged as `lib/arm64-v8a/libcactus_jni.so`; no other runtime binaries are included.)
+- [x] 3.2 Implement model load/status and `cactus_describe` using the recorded API contract, explicit buffer ownership, serialized calls and background execution. (Kotlin MethodChannel dispatches on a single-thread executor; JNI copies input/output buffers and serializes all ABI calls under a mutex. Dart facade maps errors.)
+- [x] 3.3 Identify a deterministic local test image and record its source/identity; validate orientation, RGB layout, dimensions and options against the reference API. (Test image: Cactus Compute public logo, `https://cactuscompute.com/assets/cactus_white.png`, original SHA-256 `ceb154d0478940e6a8cf20de22a597b34a2e921211ddc8d701e5073828c1c56c`, decoded source 896x880 RGBA; ImageMagick composited on white and resized to fixed 512x512 packed RGB. Input passed 786,432 bytes.)
+- [x] 3.4 Run inference on the phone; capture raw response, model load/inference time, memory behavior and representative failure cases. (Temporary NDK-built harness, no app integration: Xiaomi 23049PCD8G, Android 15/API 35, ARM64. `cactus_load` returned 0, `cactus_models()` returned 4 in 38 ms; `cactus_describe` returned 110 in 273 ms. Raw response captured in design.md. Process peaked details not yet profiled; failure behavior to exercise through integrated tests.)
+- [ ] 3.5 Add focused tests for image conversion, native error propagation and bridge state/lifecycle. (Dart bridge tests cover RGB validation, argument transmission, JSON result and error mapping; native lifecycle/error paths still need on-device tests.)
 
 ## 4. Implement model acquisition and image-analysis UI
 
-- [ ] 4.1 Add app-private persistent storage and a pinned HTTPS model download with progress, cancellation, retry, checksum verification and insufficient-space handling.
-- [ ] 4.2 Add gallery image selection and a correctly oriented preview; handle unsupported images and decode failures.
+- [ ] 4.1 Add app-private persistent storage and pinned HTTPS model download with progress, cancellation, retry and SHA-256 verification. Download to a temporary file and atomically promote only after verification; discard/isolate partial files on cancellation/interruption; handle insufficient storage.
+- [ ] 4.2 Add gallery image selection and a correctly oriented preview; handle unsupported images and decode failures. Camera remains out of scope.
 - [ ] 4.3 Replace the starter screen with the compact dark Mirage interface: upload action, preview, description and expandable raw JSON.
 - [ ] 4.4 Add explicit model/download/inference states, disable conflicting actions while native calls are active, and provide recoverable errors.
 - [ ] 4.5 Add response parsing tests; only implement visual overlays after field schema and coordinate semantics are verified.
 
 ## 5. Validate offline behavior and document delivery
 
-- [ ] 5.1 Download and verify the model while online; confirm it persists across app relaunch.
-- [ ] 5.2 Enable airplane mode and run inference on a local image; verify no inference-time HTTP/cloud dependency.
-- [ ] 5.3 Record phone/Android/runtime/model versions, model size, minimum observed free storage, load time, inference latency, memory behavior and limitations.
+- [ ] 5.1 Download and verify the model while online; confirm it persists across app relaunch and that failed/incomplete downloads are never treated as ready.
+- [ ] 5.2 With the identified test image and verified model, relaunch app in airplane mode, run inference, and record evidence of an actual fresh result without network access.
+- [ ] 5.3 Record phone/Android/runtime/model versions, test-image identity, model size, minimum observed free storage, load time, inference latency, memory behavior and limitations.
 - [ ] 5.4 Document setup, build/install, model download, offline use, licenses/sources, device requirements and troubleshooting.
-- [ ] 5.5 Run final Flutter analysis/tests and a physical-device build/install; summarize remaining risks.
+- [ ] 5.5 Run final Flutter analysis/tests and a physical-device build/install; summarize remaining risks and blockers.

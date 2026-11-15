@@ -29,9 +29,11 @@ Build a Flutter Android app in `/home/nainai/projects/cactus-pocket` that runs *
 - [x] Added a devenv/direnv environment with a phone-focused Android setup (no emulators).
 - [x] Built, installed and launched the starter app on a Xiaomi 23049PCD8G (Android 15, API 35).
 - [x] Committed the work in small commits; the root repository working tree is clean.
-- [ ] Make Android SDK/NDK configuration reproducible. The starter APK built and installed, but setup needed a writable SDK path and the earlier NDK path was invalid. Do not consider fresh-checkout builds verified yet.
+- [ ] Verify a fresh Android build without ignored `local.properties`. Gradle now uses `FLUTTER_ROOT`; the devenv config enables the pinned NDK, but the clean-config APK build has not yet been re-run.
 - [ ] Keep a stable Flutter debug connection to the phone; `flutter run` has reported device connection loss even though the installed app launched.
 - [ ] No Mirage model, runtime bridge, image input, or inference UI is implemented.
+- Cactus 4.1.1 publishes an Android ARM64 header/archive manifest with `cactus_describe`; model revision `3d03cee88c0acbe4e71b94b567ab14e6e55f40c9` has SHA-256 `4249a0f7515272ff76b9414bec17d7e7daf84b15b66c7fb4f17fce1e66f9f237`. Actual runtime/model compatibility remains unproven on-device.
+- The official Flutter plugin license is restricted to qualifying non-commercial users; do not reuse it unless eligibility is established or a commercial license is obtained.
 
 ## Implementation plan
 

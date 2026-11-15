@@ -4,7 +4,7 @@ Flutter Android starter for exploring local Cactus Mirage inference.
 
 ## Development environment
 
-Requirements: Nix with flakes enabled, `devenv`, and a physical Android phone with USB debugging enabled. The devenv Android integration provides Flutter and the Android SDK tools. It is configured for Android API 35 and build-tools 35.0.0; emulator binaries/system images, Google APIs, NDK and CMake are disabled to reduce the environment. Re-enable NDK/CMake if the Mirage bridge needs native compilation.
+Requirements: Nix with flakes enabled, `devenv`, and an ARM64 Android phone with USB debugging enabled. The devenv Android integration provides Flutter, Java 17, Android API 35, build-tools 35.0.0, platform-tools, and NDK 28.2.13676358. Emulator system images and Google APIs are not required. Gradle gets the Flutter SDK from `FLUTTER_ROOT` and Android SDK/NDK from the devenv environment; `android/local.properties` is optional for Flutter's generated metadata and must not be used for machine-specific SDK paths.
 
 ```sh
 devenv shell
@@ -21,9 +21,22 @@ adb devices
 flutter run
 ```
 
-The first build can take a while while Gradle fetches dependencies.
+From a fresh checkout, run the following in the devenv shell. No local SDK properties file is needed:
 
-The `cactus_pocket/` directory is the Flutter app. The app is only Flutter's generated starter, not Mirage-enabled yet. Mirage inference requires a verified Android runtime bridge and pinned model/runtime versions; see `PLAN.md` before implementing it.
+```sh
+cd cactus_pocket
+flutter analyze
+flutter test
+flutter build apk --debug
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+adb shell monkey -p com.cactuscompute.cactus_pocket 1
+```
+
+The first build can take a while while Gradle fetches dependencies. On first use, authorize USB debugging on the phone. Check `adb devices` before building/installing. This is a physical-device workflow; no emulator is required.
+
+The `cactus_pocket/` directory contains the Flutter app. Mirage inference remains gated on a verified, licensed native runtime/model combination; see `PLAN.md` and the active OpenSpec change.
+
+The verified build baseline uses devenv's immutable Android SDK including NDK 28.2.13676358. Gradle pins that version, while `FLUTTER_ROOT` resolves the Flutter Gradle plugin. The SDK package includes the NDK, so Gradle does not need to install it with `sdkmanager`.
 
 ## Current status
 

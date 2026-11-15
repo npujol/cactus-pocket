@@ -15,15 +15,16 @@
   # and platform-tools. No emulator packages or system images.
   android = {
     enable = true;
-    platforms.version = [ "35" ];
+    platforms.version = [ "34" "35" ];
     buildTools.version = [ "35.0.0" ];
     platformTools.version = "latest";
     emulator.enable = false;
     systemImageTypes = [ ];
-    ndk.enable = false;
-    cmake.version = [ ];
+    # Bundle the pinned NDK into the immutable SDK so Gradle never tries to
+    # install it with sdkmanager during a build.
+    ndk.enable = true;
+    cmake.version = [ "3.22.1" ];
     googleAPIs.enable = false;
-    # Install matching NDK into the immutable devenv SDK, not with sdkmanager.
     ndk.version = [ "28.2.13676358" ];
     # Only ARM64 phones are in the MVP target.
     abis = [ "arm64-v8a" ];
