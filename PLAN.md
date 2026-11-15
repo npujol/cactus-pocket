@@ -23,50 +23,72 @@ Build a Flutter Android app in `/home/nainai/projects/cactus-pocket` that runs *
   - License metadata reported by GitHub as `NOASSERTION`; inspect its LICENSE before copying/adapting code. Prefer treating it as a reference unless license terms are verified.
 - Image UI reference supplied by the user: `/tmp/pi-clipboard-91d3dba1-8278-40ae-a4a1-717df5c2aa71.png`.
 
+## Current status
+
+- [x] Created a Flutter Android starter app in `cactus_pocket/`.
+- [x] Added a devenv/direnv environment with a phone-focused Android setup (no emulators).
+- [x] Built, installed and launched the starter app on a Xiaomi 23049PCD8G (Android 15, API 35).
+- [x] Committed the work in small commits; the root repository working tree is clean.
+- [ ] Make Android SDK/NDK configuration reproducible. The starter APK built and installed, but setup needed a writable SDK path and the earlier NDK path was invalid. Do not consider fresh-checkout builds verified yet.
+- [ ] Keep a stable Flutter debug connection to the phone; `flutter run` has reported device connection loss even though the installed app launched.
+- [ ] No Mirage model, runtime bridge, image input, or inference UI is implemented.
+
 ## Implementation steps
 
-1. **Confirm technical baseline and licenses**
+1. **Stabilize the development baseline**
+   - Inspect the committed devenv and Flutter Android configuration; remove reliance on untracked machine-specific paths such as `android/local.properties`.
+   - Resolve SDK/NDK setup so a fresh shell can build the APK reproducibly without emulator images.
+   - Run Flutter analysis/tests, build and install on the connected ARM64 phone, and check whether the debug connection stays alive. Record any device-specific workaround.
+   - Keep this separate from Mirage integration: the starter app must build and launch reliably first.
+
+2. **Confirm technical baseline and licenses**
    - Inspect `cactus-pocket` contents and choose Flutter project structure.
    - Check `cactus-flutter` license and current Android ABI/version compatibility.
    - Confirm exact Cactus Android runtime version/API and Mirage model revision are compatible; pin versions rather than using floating `main` artifacts.
-   - Check available Flutter, Android SDK/NDK and device/emulator for build/testing. Flutter was not found in PATH during initial inspection; `adb` was available.
+   - Check Flutter, Android SDK/NDK and the connected physical phone for build/testing. No emulator is required for this project.
 
-2. **Scaffold Flutter application**
-   - Create the Flutter app in this directory.
-   - Recreate the screenshot's dark, compact sandbox layout: camera/upload actions, image preview, description panel and expandable JSON output.
+3. **Scaffold and build the Flutter application**
+   - The generated Flutter starter exists in `cactus_pocket/` and has been installed and launched on the target phone.
+   - Replace the starter screen with the screenshot's dark, compact sandbox layout: camera/upload actions, image preview, description panel and expandable JSON output.
    - Add loading, download progress, inference status, errors and offline/model-ready states.
 
-3. **Implement local model management**
+4. **Implement local model management**
    - Download Mirage `.cact` once over HTTPS, save it in app-private storage, and preserve it across launches.
-   - Offer progress, retry, integrity verification where a pinned checksum is available, and clear storage/error handling.
+   - Pin and document the model revision, source, license and checksum; verify the checksum before loading.
+   - Offer progress, retry, cancellation and clear storage/error handling, including insufficient-space failures.
    - Make model availability explicit. App must not silently attempt network requests during inference.
+   - Record model size and establish practical storage and memory requirements on the target phone.
 
-4. **Implement native Mirage inference bridge**
+5. **Prove and implement native Mirage inference bridge**
+   - First milestone: with pinned runtime/model revisions, load one `.cact` archive and run `cactus_describe` on one known image on the phone. Capture the raw response, load/inference time, memory behavior and errors. Defer full UI work until this succeeds.
    - Integrate the Android Cactus runtime for the selected ABI (initial target: `arm64-v8a`).
    - Ensure the linked native library exports the current Mirage APIs (`cactus_load`, `cactus_models`, `cactus_describe`, `cactus_last_error`). Verify the official Flutter plugin's bundled `.so` version/API before reusing it; its checked-in FFI currently does not bind the Mirage describe API.
    - Provide a Dart-facing method to load the `.cact` archive and run image inference.
    - Decode chosen/captured image, apply orientation, resize if appropriate, convert to packed RGB bytes, pass dimensions/options and parse returned JSON.
-   - Run native work off the UI thread where feasible; manage native buffers, memory, lifecycle and model unload safely.
+   - Run native work off the UI thread where feasible; manage native buffers, memory, lifecycle, cancellation and model unload safely. Provide actionable load/inference errors and recovery without restarting the app where feasible.
 
-5. **Add image input and result UI**
+6. **Add image input and result UI**
    - Support gallery picker first; add camera capture and permissions.
    - Render image preview, description and JSON; add overlays for boxes/masks only after confirming exact JSON schema and coordinates from the model/API.
    - Keep output inspectable and provide useful failure messages.
 
-6. **Validate offline operation**
-   - Build/install on an ARM64 Android device or emulator.
+7. **Validate offline operation**
+   - Build/install on the target ARM64 Android phone.
    - Download model while connected, run a sample image, then enable Airplane mode and repeat.
    - Verify there are no inference-time HTTP/cloud dependencies; inspect app permissions/network behavior.
    - Record device, Android version, model load time, inference latency, memory behavior and known limitations. Do not assume the blog's Galaxy S26 NPU timing applies to other devices; start with the supported CPU path unless verified acceleration exists.
 
-7. **Document delivery**
+8. **Document delivery**
    - Add setup, build, run and offline-use instructions, minimum device/storage requirements, model source/version/license and troubleshooting.
    - Include tests for model state, image conversion, native error handling and response parsing where feasible.
 
 ## Constraints and caveats
 
+- Current tested device: Xiaomi 23049PCD8G, Android 15/API 35, ARM64. Starter APK built, installed and launched. A stable Flutter debug session is not yet confirmed.
+- Emulator coverage is not required; prioritize the physical phone workflow.
+
 - The Termux `pip install cactus-compute` route is not supported for Android/Bionic; the observed Python/Expat failure is separate from Mirage inference.
 - The Android command-line runner does not provide image inference through `--image`; use the native Mirage API.
 - The standalone Android runtime artifacts and model must be present locally before airplane-mode testing.
-- The initial folder was empty and not a Git repository. No app implementation or code changes have been made yet.
+- The Flutter starter and development environment are committed. The SDK/NDK setup has not yet been proven reproducible from a fresh checkout; stabilize it before Mirage integration.
 - NPU support/performance is device-specific and outside the initial CPU-based MVP unless Cactus provides a compatible documented Android acceleration path.
