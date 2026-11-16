@@ -2,7 +2,9 @@
 #include <android/log.h>
 
 #include <cactus.h>
+#include "image_input_limits.h"
 
+#include <limits>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -68,50 +70,59 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_cactuscompute_cactus_1pocket_CactusNative_describe(
     JNIEnv* env, jobject /* thiz */, jbyteArray rgbBytes, jint width, jint height,
     jstring optionsValue, jstring languageValue, jstring keywordsValue) {
-  if (rgbBytes == nullptr || width <= 0 || height <= 0) {
-    throwJavaException(env, "java/lang/IllegalArgumentException",
-                       "Image RGB data and positive dimensions are required");
+  jstring response = nullptr;
+  const jsize actualLength = rgbBytes == nullptr ? 0 : env->GetArrayLength(rgbBytes);
+  const bool valid =
+      rgbBytes != nullptr &&
+      cactus_pocket::invokeForValidRgb(
+          width,
+          height,
+          actualLength,
+          std::numeric_limits<jsize>::max(),
+          [&](std::int64_t expectedBytes) {
+            auto readString = [env](jstring value, const char* fallback) -> std::string {
+              if (value == nullptr) return fallback;
+              const char* chars = env->GetStringUTFChars(value, nullptr);
+              if (chars == nullptr) return {};
+              std::string result(chars);
+              env->ReleaseStringUTFChars(value, chars);
+              return result;
+            };
+            const std::string options = readString(optionsValue, "{}");
+            const std::string language = readString(languageValue, "en");
+            const std::string keywords = readString(keywordsValue, "");
+            if (env->ExceptionCheck()) return;
+
+            std::vector<unsigned char> rgb(static_cast<size_t>(expectedBytes));
+            env->GetByteArrayRegion(
+                rgbBytes, 0, static_cast<jsize>(expectedBytes), reinterpret_cast<jbyte*>(rgb.data()));
+            if (env->ExceptionCheck()) return;
+
+            std::vector<char> output(kOutputCapacity, '\0');
+            std::lock_guard<std::mutex> lock(gEngineMutex);
+            if (!gModelReady) {
+              throwJavaException(env, "java/lang/IllegalStateException",
+                                 "Mirage model is not loaded; download and load it first");
+              return;
+            }
+
+            const int result = cactus_describe(
+                rgb.data(), width, height, options.c_str(), language.c_str(), keywords.c_str(),
+                output.data(), static_cast<int>(output.size()));
+            if (result < 0) {
+              const auto error = lastError();
+              __android_log_print(ANDROID_LOG_ERROR, kTag, "cactus_describe failed: %s", error.c_str());
+              throwJavaException(env, "java/lang/IllegalStateException", error);
+              return;
+            }
+            response = toJavaString(env, std::string(output.data()));
+          });
+  if (!valid) {
+    throwJavaException(
+        env,
+        "java/lang/IllegalArgumentException",
+        "Image dimensions must be positive, at most 2048 pixels per side, and no more than 4 megapixels with an exact RGB byte count");
     return nullptr;
   }
-  const jlong expected = static_cast<jlong>(width) * height * 3;
-  if (expected <= 0 || expected != env->GetArrayLength(rgbBytes)) {
-    throwJavaException(env, "java/lang/IllegalArgumentException",
-                       "Packed RGB byte count must equal width * height * 3");
-    return nullptr;
-  }
-
-  auto readString = [env](jstring value, const char* fallback) -> std::string {
-    if (value == nullptr) return fallback;
-    const char* chars = env->GetStringUTFChars(value, nullptr);
-    if (chars == nullptr) return {};
-    std::string result(chars);
-    env->ReleaseStringUTFChars(value, chars);
-    return result;
-  };
-  const std::string options = readString(optionsValue, "{}");
-  const std::string language = readString(languageValue, "en");
-  const std::string keywords = readString(keywordsValue, "");
-  if (env->ExceptionCheck()) return nullptr;
-
-  std::vector<unsigned char> rgb(static_cast<size_t>(expected));
-  env->GetByteArrayRegion(rgbBytes, 0, static_cast<jsize>(expected), reinterpret_cast<jbyte*>(rgb.data()));
-  if (env->ExceptionCheck()) return nullptr;
-
-  std::vector<char> output(kOutputCapacity, '\0');
-  std::lock_guard<std::mutex> lock(gEngineMutex);
-  if (!gModelReady) {
-    throwJavaException(env, "java/lang/IllegalStateException",
-                       "Mirage model is not loaded; download and load it first");
-    return nullptr;
-  }
-
-  const int result = cactus_describe(rgb.data(), width, height, options.c_str(), language.c_str(),
-                                     keywords.c_str(), output.data(), static_cast<int>(output.size()));
-  if (result < 0) {
-    const auto error = lastError();
-    __android_log_print(ANDROID_LOG_ERROR, kTag, "cactus_describe failed: %s", error.c_str());
-    throwJavaException(env, "java/lang/IllegalStateException", error);
-    return nullptr;
-  }
-  return toJavaString(env, std::string(output.data()));
+  return response;
 }

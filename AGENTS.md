@@ -15,11 +15,12 @@ devenv shell
 Use these checks before committing app changes:
 
 ```sh
+devenv shell -- test-flutter-linux
 devenv shell -- test-solution
 devenv shell -- prek run --all-files
 ```
 
-`test-solution` runs Flutter analysis and tests, builds the debug APK, checks for `lib/arm64-v8a/libcactus_jni.so`, then installs and launches the app on the first authorized ADB device. It does **not** test the app's interactive model-download/gallery/inference flows or airplane-mode behavior; verify those manually and record evidence. A connected device is required for the install/launch portion.
+`test-flutter-linux` runs Flutter analysis and unit/widget tests on the Linux host without using ADB or changing the phone. Run it while interactive acceptance is in progress on the device. `test-solution` reuses those checks, builds the debug APK, checks for `lib/arm64-v8a/libcactus_jni.so`, then installs and launches the app on the first authorized ADB device. Neither command tests interactive model-download/gallery/inference flows or airplane-mode behavior; verify those manually and record evidence. A connected device is required for the install/launch portion of `test-solution`.
 
 ## Code quality
 

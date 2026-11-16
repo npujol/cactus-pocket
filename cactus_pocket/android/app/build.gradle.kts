@@ -4,6 +4,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+}
+
 val buildCactusNative by tasks.registering(Exec::class) {
     val ndkRoot = System.getenv("ANDROID_NDK_ROOT") ?: error("ANDROID_NDK_ROOT is required in devenv")
     val jniDir = layout.projectDirectory.dir("src/main/jni").asFile
@@ -27,6 +31,42 @@ val buildCactusNative by tasks.registering(Exec::class) {
 
 tasks.configureEach {
     if (name.startsWith("pre") && name.endsWith("Build")) dependsOn(buildCactusNative)
+}
+
+val releaseStoreFile = providers.environmentVariable("CACTUS_RELEASE_STORE_FILE").orNull
+    ?.takeIf(String::isNotBlank)
+    ?.let(::file)
+val releaseStorePassword = providers.environmentVariable("CACTUS_RELEASE_STORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("CACTUS_RELEASE_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("CACTUS_RELEASE_KEY_PASSWORD").orNull
+
+val validateReleaseSigning by tasks.registering {
+    doLast {
+        val missing = buildList {
+            if (releaseStoreFile == null) add("CACTUS_RELEASE_STORE_FILE")
+            if (releaseStorePassword.isNullOrBlank()) add("CACTUS_RELEASE_STORE_PASSWORD")
+            if (releaseKeyAlias.isNullOrBlank()) add("CACTUS_RELEASE_KEY_ALIAS")
+            if (releaseKeyPassword.isNullOrBlank()) add("CACTUS_RELEASE_KEY_PASSWORD")
+        }
+        check(missing.isEmpty()) {
+            "Release build requires externally supplied signing credentials: ${missing.joinToString()}."
+        }
+
+        val keystore = checkNotNull(releaseStoreFile)
+        check(keystore.isFile && keystore.canRead()) {
+            "CACTUS_RELEASE_STORE_FILE must point to a readable keystore file."
+        }
+        val repositoryRoot = rootProject.projectDir.resolve("../..").canonicalFile.toPath()
+        check(!keystore.canonicalFile.toPath().startsWith(repositoryRoot)) {
+            "The release keystore must be stored outside the repository."
+        }
+    }
+}
+
+tasks.configureEach {
+    if (name in setOf("validateSigningRelease", "packageRelease", "bundleRelease")) {
+        dependsOn(validateReleaseSigning)
+    }
 }
 
 android {
@@ -58,11 +98,18 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            if (releaseStoreFile != null) storeFile = releaseStoreFile
+            storePassword = releaseStorePassword.orEmpty()
+            keyAlias = releaseKeyAlias.orEmpty()
+            keyPassword = releaseKeyPassword.orEmpty()
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

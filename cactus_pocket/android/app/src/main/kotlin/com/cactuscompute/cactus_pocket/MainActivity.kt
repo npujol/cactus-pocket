@@ -60,20 +60,34 @@ class MainActivity : FlutterActivity() {
         val rgb = call.argument<ByteArray>("rgb")
         val width = call.argument<Int>("width")
         val height = call.argument<Int>("height")
-        if (!isValidImage(rgb, width, height)) {
-            result.error(
-                "invalid_image",
-                "Packed RGB and matching positive image dimensions are required",
-                null,
-            )
-            return
-        }
-        val options = call.argument<String>("options") ?: "{}"
-        val language = call.argument<String>("language") ?: "en"
-        val keywords = call.argument<String>("keywords") ?: ""
-        inferenceExecutor.execute {
-            describeOnWorker(rgb!!, width!!, height!!, options, language, keywords, result)
-        }
+        ImageInputLimits.invokeForValidImage(
+            rgb = rgb,
+            width = width,
+            height = height,
+            onInvalid = {
+                result.error(
+                    "invalid_image",
+                    "RGB data must match positive image dimensions no larger than 2048 pixels per side or 4 megapixels",
+                    null,
+                )
+            },
+            onValid = { validRgb, validWidth, validHeight ->
+                val options = call.argument<String>("options") ?: "{}"
+                val language = call.argument<String>("language") ?: "en"
+                val keywords = call.argument<String>("keywords") ?: ""
+                inferenceExecutor.execute {
+                    describeOnWorker(
+                        validRgb,
+                        validWidth,
+                        validHeight,
+                        options,
+                        language,
+                        keywords,
+                        result,
+                    )
+                }
+            },
+        )
     }
 
     private fun describeOnWorker(
@@ -102,16 +116,8 @@ class MainActivity : FlutterActivity() {
         runOnUiThread { result.error(code, error.message ?: fallback, null) }
     }
 
-    private fun isValidImage(rgb: ByteArray?, width: Int?, height: Int?): Boolean {
-        if (rgb == null || width == null || height == null) return false
-        val hasPositiveDimensions = width > 0 && height > 0
-        val hasMatchingSize = width.toLong() * height * RGB_CHANNELS == rgb.size.toLong()
-        return hasPositiveDimensions && hasMatchingSize
-    }
-
     companion object {
         private const val CHANNEL = "com.cactuscompute.cactus_pocket/mirage"
-        private const val RGB_CHANNELS = 3
         private val inferenceExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
         private val native by lazy { CactusNative() }
     }

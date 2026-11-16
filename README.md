@@ -26,7 +26,20 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 adb shell monkey -p com.cactuscompute.cactus_pocket 1
 ```
 
-`devenv shell -- test-solution` runs analysis, tests, debug APK build, ARM64 JNI packaging checks, and install/launch on the first authorized ADB device. Confirm its build output has no Flutter warnings that the AGP or Kotlin plugin version will soon be unsupported. A connected phone is needed for the install/launch steps. No generated local SDK properties file is required.
+`devenv shell -- test-flutter-linux` runs Flutter analysis and unit/widget tests on the Linux host; it needs no phone and can run alongside interactive acceptance on the connected device. `devenv shell -- test-solution` reuses those checks, builds the debug APK, verifies ARM64 JNI packaging, and installs/launches on the first authorized ADB device. Confirm the build output has no Flutter warnings that the AGP or Kotlin plugin version will soon be unsupported. A connected phone is needed for the install/launch steps. Neither script covers interactive model-download/gallery/inference flows or airplane-mode behavior. No generated local SDK properties file is required.
+
+## Release signing and network policy
+
+Release APKs require externally provisioned signing values in the build environment:
+
+- `CACTUS_RELEASE_STORE_FILE`: absolute path to a readable keystore outside this repository
+- `CACTUS_RELEASE_STORE_PASSWORD`
+- `CACTUS_RELEASE_KEY_ALIAS`
+- `CACTUS_RELEASE_KEY_PASSWORD`
+
+Provide these through a CI secret manager or a private local environment; do not put passwords or keystore files in tracked source. The release build fails before packaging if any value is missing or the keystore is unreadable. With the variables provisioned, build using `cd cactus_pocket && flutter build apk --release`. Debug builds use the development debug key and do not require release credentials: `cd cactus_pocket && flutter build apk --debug`.
+
+The main Android manifest grants `INTERNET` for model acquisition and sets `android:usesCleartextTraffic="false"`. The pinned model URL uses HTTPS; release networking does not permit cleartext HTTP.
 
 ## Use
 
@@ -37,6 +50,8 @@ adb shell monkey -p com.cactuscompute.cactus_pocket 1
 5. Once the model is ready, enable airplane mode or otherwise disconnect the network and run inference again. Image decoding and `cactus_describe` are local.
 
 Cancelled, interrupted, incomplete, or checksum-mismatched downloads are not considered ready. A failed setup displays an error and allows retry. If storage is low, free space and retry; the app reports storage write failures and removes temporary partial files.
+
+The pinned model download is limited to exactly 21,611,043 bytes, with a 10-minute total deadline and a 60-second no-data timeout. An oversized, short, stalled, or timed-out response fails recoverably; its `.part` file is removed and the model remains unavailable. Retry **Get model** on a stable connection. When pinning a new model artifact, update `mirageModelSizeBytes` and `mirageModelSha256` together, and verify both values against that artifact.
 
 ## Pinned artifacts and licenses
 
@@ -58,5 +73,5 @@ The model was downloaded in-app, checksum-verified, and loaded after relaunch. A
 - **Android SDK/NDK not found:** enter `devenv shell`; do not hard-code local SDK paths. Check `FLUTTER_ROOT`, `ANDROID_HOME`, and `ANDROID_NDK_ROOT` in that environment.
 - **Model download failed:** reconnect to the internet, check free app storage, then tap **Get model** again. The app retains no eligible partial model after a failed download.
 - **Model checksum/load failure:** retry the download. The pinned digest is checked before the model can be loaded.
-- **Gallery image rejected:** choose a supported, decodable image (JPEG or PNG); camera capture is out of scope.
+- **Gallery image rejected:** images are limited to 32 MiB encoded, 2048 pixels on either side, and 4 megapixels after picker resizing. Choose a smaller JPEG or PNG, or crop it before selecting again. The rejected selection is cleared and **Describe** remains disabled until a valid image is selected; camera capture is out of scope.
 - **Native inference error:** confirm the model status is ready and retry with another image. Inference does not fall back to a network service.

@@ -146,11 +146,23 @@ class _MirageHomePageState extends State<MirageHomePage> {
   Future<void> _pickImage() async {
     if (_busy) return;
     try {
-      final picked = await _picker.pickImage(source: ImageSource.gallery);
+      final picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: maxInferenceImageSide.toDouble(),
+        maxHeight: maxInferenceImageSide.toDouble(),
+      );
       if (picked == null) return;
       final file = File(picked.path);
-      // Decode now to reject unsupported/corrupt images before showing a preview.
-      decodeToRgb(await file.readAsBytes());
+      if (mounted) {
+        setState(() {
+          _selectedFile = null;
+          _description = null;
+          _rawJson = null;
+          _error = null;
+        });
+      }
+      // Check metadata before reading the encoded image into Dart memory.
+      decodeToRgb(await readBoundedImageFile(file));
       if (mounted) {
         setState(() {
           _selectedFile = file;
@@ -160,7 +172,16 @@ class _MirageHomePageState extends State<MirageHomePage> {
         });
       }
     } catch (error) {
-      if (mounted) setState(() => _error = 'Could not open this image: $error');
+      if (mounted) {
+        setState(() {
+          _selectedFile = null;
+          _description = null;
+          _rawJson = null;
+          _error = error is FormatException
+              ? error.message
+              : 'Could not open this image: $error';
+        });
+      }
     }
   }
 
@@ -173,7 +194,7 @@ class _MirageHomePageState extends State<MirageHomePage> {
       _description = null;
     });
     try {
-      final decoded = decodeToRgb(await file.readAsBytes());
+      final decoded = decodeToRgb(await readBoundedImageFile(file));
       final raw = await _inference.describe(
         rgb: decoded.bytes,
         width: decoded.width,

@@ -1,6 +1,28 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
+
+const maxGalleryImageFileBytes = 32 * 1024 * 1024;
+const maxInferenceImageSide = 2048;
+const maxInferenceImagePixels = 4 * 1024 * 1024;
+const maxInferenceRgbBytes = maxInferenceImagePixels * 3;
+
+Future<Uint8List> readBoundedImageFile(File file) async {
+  final fileSize = await file.length();
+  if (fileSize > maxGalleryImageFileBytes) {
+    throw const FormatException(
+      'Image file exceeds the 32 MiB limit. Choose a smaller image.',
+    );
+  }
+  final bytes = await file.readAsBytes();
+  if (bytes.length > maxGalleryImageFileBytes) {
+    throw const FormatException(
+      'Image file exceeds the 32 MiB limit. Choose a smaller image.',
+    );
+  }
+  return bytes;
+}
 
 class DecodedRgbImage {
   const DecodedRgbImage({
@@ -17,11 +39,38 @@ class DecodedRgbImage {
 /// Decodes common gallery formats, applies EXIF orientation, flattens alpha onto
 /// white, and returns packed row-major RGB888 as required by `cactus_describe`.
 DecodedRgbImage decodeToRgb(Uint8List encoded) {
-  final decoded = img.decodeImage(encoded);
+  if (encoded.length > maxGalleryImageFileBytes) {
+    throw const FormatException(
+      'Image file exceeds the 32 MiB limit. Choose a smaller image.',
+    );
+  }
+  final decoder = img.findDecoderForData(encoded);
+  if (decoder == null) {
+    throw const FormatException(
+      'This image is unsupported or corrupt. Choose a different image.',
+    );
+  }
+  final info = decoder.startDecode(encoded);
+  if (info == null) {
+    throw const FormatException(
+      'This image is unsupported or corrupt. Choose a different image.',
+    );
+  }
+  _validateDimensions(info.width, info.height);
+
+  final decoded = decoder.decodeFrame(0);
   if (decoded == null) {
-    throw const FormatException('Unsupported or corrupt image');
+    throw const FormatException(
+      'This image is unsupported or corrupt. Choose a different image.',
+    );
   }
   final oriented = img.bakeOrientation(decoded);
+  _validateDimensions(oriented.width, oriented.height);
+  final rgbByteCount = oriented.width * oriented.height * 3;
+  if (rgbByteCount > maxInferenceRgbBytes) {
+    throw const FormatException('Image exceeds the supported pixel limit.');
+  }
+
   final rgb = img.Image(
     width: oriented.width,
     height: oriented.height,
@@ -40,9 +89,25 @@ DecodedRgbImage decodeToRgb(Uint8List encoded) {
       );
     }
   }
-  return DecodedRgbImage(
-    bytes: Uint8List.fromList(rgb.getBytes(order: img.ChannelOrder.rgb)),
-    width: rgb.width,
-    height: rgb.height,
+  final rgbBytes = Uint8List.fromList(
+    rgb.getBytes(order: img.ChannelOrder.rgb),
   );
+  if (rgbBytes.length != rgbByteCount ||
+      rgbBytes.length > maxInferenceRgbBytes) {
+    throw const FormatException('Unable to safely prepare this image.');
+  }
+  return DecodedRgbImage(bytes: rgbBytes, width: rgb.width, height: rgb.height);
+}
+
+void _validateDimensions(int width, int height) {
+  if (width <= 0 ||
+      height <= 0 ||
+      width > maxInferenceImageSide ||
+      height > maxInferenceImageSide ||
+      width > maxInferenceImagePixels ~/ height) {
+    throw const FormatException(
+      'Image dimensions exceed 2048 pixels per side or 4 megapixels. '
+      'Choose a smaller image.',
+    );
+  }
 }

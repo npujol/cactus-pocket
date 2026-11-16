@@ -19,11 +19,18 @@
     hooks = {};
   };
 
-  scripts.test-solution.exec = ''
+  scripts.test-flutter-linux.exec = ''
     set -euo pipefail
     cd "$DEVENV_ROOT/cactus_pocket"
     flutter analyze --no-fatal-infos
     flutter test
+    bash tool/test_native_image_limits.sh
+  '';
+
+  scripts.test-solution.exec = ''
+    set -euo pipefail
+    test-flutter-linux
+    cd "$DEVENV_ROOT/cactus_pocket"
     flutter build apk --debug
 
     apk="build/app/outputs/flutter-apk/app-debug.apk"
