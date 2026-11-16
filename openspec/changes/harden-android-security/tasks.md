@@ -26,6 +26,6 @@
 ## 5. End-to-end release verification and review evidence
 
 - [ ] 5.1 Run `devenv shell -- test-solution` and `devenv shell -- prek run --all-files`; verify analysis, tests, debug APK packaging, and the existing device workflow pass.
-- [ ] 5.2 Build a release APK in an environment with production signing secrets; inspect the merged manifest and APK certificate, verify HTTPS model download and local inference, and confirm the release certificate differs from debug. Do not create or publish an artifact if release credentials are unavailable.
+- [ ] 5.2 Build a signed release APK with production credentials; inspect its merged manifest, ABI, and signing certificate. Install it on an ARM64 device from a clean install. Verify first launch, online model download, ready status after force-stop/relaunch, gallery inference, and fresh inference after another relaunch in airplane mode. Record the APK version, certificate, device, and results. A green source-release workflow does not count as app verification; it publishes no APK. Do not build or publish an artifact if release credentials are unavailable.
 - [ ] 5.3 Exercise download-size/timeout failures and image-size boundaries, including recoverable UI behavior; verify partial downloads are removed and inference still works offline with a valid image/model.
 - [x] 5.4 Update `SECURITY_REVIEW.md` with only verified results, unresolved limitations, and clear distinctions between static review and device/release-artifact evidence; verify no finding is marked resolved without supporting evidence.
