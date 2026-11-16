@@ -68,6 +68,8 @@ The pinned model download is limited to exactly 21,611,043 bytes, with a 10-minu
 
 ## Pinned artifacts and licenses
 
+The root [`LICENSE`](LICENSE) is MIT for original project code. Third-party licenses and pinned artifact provenance are documented in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md); the Apache-2.0 license text is included at [`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt). These notices do not change the terms of either license.
+
 - **Native runtime:** Cactus 4.1.1 Android ARM64 static archive, Hugging Face revision `d2c5cd70432ed78345f3ba6b620bff2feeec6c86`, [artifact](https://huggingface.co/Cactus-Compute/cactus/resolve/d2c5cd70432ed78345f3ba6b620bff2feeec6c86/releases/4.1.1/android-arm64/libcactus.a), 2,822,132 bytes, SHA-256 `01b91dae81d7e94ce55691376838d8b10453d33d7433ddd1b59bf4a9669012b9`, Apache-2.0. It is linked into the app's ARM64 `libcactus_jni.so`.
 - **Mirage model:** `Cactus-Compute/mirage`, revision `76c1e9e53381aca8fc3843c636216c96ff220122`, [model](https://huggingface.co/Cactus-Compute/mirage/resolve/76c1e9e53381aca8fc3843c636216c96ff220122/mirage.cact), 21,611,043 bytes, SHA-256 `4249a0f7515272ff76b9414bec17d7e7daf84b15b66c7fb4f17fce1e66f9f237`; model card declares Apache-2.0.
 - **Inference contract:** the app uses Cactus `cactus_load`, `cactus_models`, `cactus_last_error`, and `cactus_describe`; it does not use a CLI image option or a cloud inference API.
