@@ -2,7 +2,7 @@
 
 **Reviewed:** 2026-11-16
 
-**Revision:** Source tree based on `52378b9`, including the source-release automation reviewed below
+**Reviewed source:** GitHub `main` at `b8d7200`; this review records the first automated release result.
 
 **Scope:** Follow-up static review of the Flutter Android app, model acquisition, gallery-image processing, Android build/signing configuration, Kotlin/JNI inference boundary, and GitHub source-release automation. This is not a penetration test or a complete supply-chain audit.
 
@@ -28,7 +28,8 @@ The original review findings have implementation changes and host-side evidence 
 - This was a targeted pattern scan, not an exhaustive secret audit. No dedicated secret-scanning tool was run, and the result does not guarantee that all sensitive data is absent.
 - The semantic-release workflow creates GitHub source releases only; it does not build or upload APKs. It grants `contents: write`, uses commit-pinned GitHub Actions, and relies on the built-in `GITHUB_TOKEN`; no custom token or signing secret was added.
 - `npm audit --omit=dev` reports no production dependencies. The full audit reports 36 moderate advisories in the release-tooling dependency tree and no high-severity advisories at review time. These development dependencies execute in the release workflow, so the findings remain relevant and should be rechecked before release.
-- `npm ci`, semantic-release CLI loading, configuration parsing, the Flutter version-code mapping test, and `actionlint` pass. The workflow has not yet run on GitHub, and no release was created.
+- `npm ci`, semantic-release CLI loading, configuration parsing, the Flutter version-code mapping test, and `actionlint` pass. GitHub Actions run `43959751908` completed successfully and created source release `v1.0.0`; no APK was built or uploaded.
+- The remote's MIT `LICENSE` was merged. The README identifies the bundled Cactus runtime and model as Apache-2.0, but the repository does not include their Apache license text or a third-party notices file. Verify and add required upstream notices before further redistribution.
 
 ### Release-artifact and device verification not performed
 

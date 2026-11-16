@@ -45,14 +45,14 @@ The main Android manifest grants `INTERNET` for model acquisition and sets `andr
 
 GitHub Actions runs semantic-release on pushes to `master` or `main`. It creates GitHub source releases and tags, updates `CHANGELOG.md`, and synchronizes the Flutter version in `cactus_pocket/pubspec.yaml`. It does **not** build or upload APKs; release APKs still require the external signing credentials above.
 
-Use [Conventional Commits](https://www.conventionalcommits.org/) so changes determine the next version: `feat:` for a minor release, `fix:` for a patch, and a `BREAKING CHANGE:` footer for a major release. Existing history has no release tags and includes Conventional Commit subjects, so the first push to the release branch may create a release from that history. For example:
+The initial source release `v1.0.0` was created from the existing Conventional Commit history on 2026-11-16. For future releases, use [Conventional Commits](https://www.conventionalcommits.org/): `feat:` for a minor release, `fix:` for a patch, and a `BREAKING CHANGE:` footer for a major release. For example:
 
 ```sh
 git commit -m "feat: add model retry control"
 git push origin HEAD:main
 ```
 
-Before the first release, enable GitHub Actions with **read and write** repository contents permission under **Settings → Actions → General → Workflow permissions**. Branch protection must permit the workflow's `GITHUB_TOKEN` to push its changelog/version commit and tag. No custom release secret is needed. The workflow uses the built-in token and publishes source archives only.
+For future releases, GitHub Actions needs **read and write** repository contents permission under **Settings → Actions → General → Workflow permissions**. Branch protection must permit the workflow's `GITHUB_TOKEN` to push its changelog/version commit and tag. No custom release secret is needed. The workflow uses the built-in token and publishes source archives only.
 
 ## Use
 
