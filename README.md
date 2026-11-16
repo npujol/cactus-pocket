@@ -41,6 +41,19 @@ Provide these through a CI secret manager or a private local environment; do not
 
 The main Android manifest grants `INTERNET` for model acquisition and sets `android:usesCleartextTraffic="false"`. The pinned model URL uses HTTPS; release networking does not permit cleartext HTTP.
 
+## Automated source releases
+
+GitHub Actions runs semantic-release on pushes to `master` or `main`. It creates GitHub source releases and tags, updates `CHANGELOG.md`, and synchronizes the Flutter version in `cactus_pocket/pubspec.yaml`. It does **not** build or upload APKs; release APKs still require the external signing credentials above.
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) so changes determine the next version: `feat:` for a minor release, `fix:` for a patch, and a `BREAKING CHANGE:` footer for a major release. Existing history has no release tags and includes Conventional Commit subjects, so the first push to the release branch may create a release from that history. For example:
+
+```sh
+git commit -m "feat: add model retry control"
+git push origin HEAD:main
+```
+
+Before the first release, enable GitHub Actions with **read and write** repository contents permission under **Settings → Actions → General → Workflow permissions**. Branch protection must permit the workflow's `GITHUB_TOKEN` to push its changelog/version commit and tag. No custom release secret is needed. The workflow uses the built-in token and publishes source archives only.
+
 ## Use
 
 1. Connect to the internet and open Mirage.

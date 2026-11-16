@@ -2,9 +2,9 @@
 
 **Reviewed:** 2026-11-16
 
-**Revision:** `c224430` plus uncommitted worktree changes
+**Revision:** Source tree based on `52378b9`, including the source-release automation reviewed below
 
-**Scope:** Follow-up static review of the Flutter Android app, model acquisition, gallery-image processing, Android build/signing configuration, and Kotlin/JNI inference boundary. This is not a penetration test or a complete supply-chain audit.
+**Scope:** Follow-up static review of the Flutter Android app, model acquisition, gallery-image processing, Android build/signing configuration, Kotlin/JNI inference boundary, and GitHub source-release automation. This is not a penetration test or a complete supply-chain audit.
 
 ## Summary
 
@@ -20,6 +20,15 @@ The original review findings have implementation changes and host-side evidence 
 - Image tests cover the 32 MiB file boundary, 2048-pixel maximum side, 4-megapixel RGB-buffer boundary, invalid data, alpha compositing, and EXIF orientation. The app checks the picked file's length before reading it and validates decoder dimensions before creating RGB output. The pinned Android picker implementation's resize path was inspected: it uses bounds decoding, sampled bitmap decoding, and EXIF copying. The app requests 2048-by-2048 limits.
 - Kotlin unit tests and a host-compiled C++ validation test cover zero, negative, over-limit, mismatched, extreme, and valid boundary dimensions. The debug build compiles the JNI library; both validators gate the inference call before image-buffer allocation/copy.
 - `devenv shell -- prek run --all-files` passes. `devenv shell -- test-solution` passes analysis, Flutter tests, debug APK packaging, and ARM64 JNI packaging, then exits 2 because no authorized ADB device is attached.
+
+### Source-publication checks
+
+- Before adding release automation, tracked source and reachable Git history were checked for private-key blocks and common credential/token patterns; no matches were found. The new workflow/config were separately inspected and contain only a reference to GitHub's built-in token, not a token value.
+- `local.properties` is ignored and untracked. No keystore, signing-property file, or release credential is tracked.
+- This was a targeted pattern scan, not an exhaustive secret audit. No dedicated secret-scanning tool was run, and the result does not guarantee that all sensitive data is absent.
+- The semantic-release workflow creates GitHub source releases only; it does not build or upload APKs. It grants `contents: write`, uses commit-pinned GitHub Actions, and relies on the built-in `GITHUB_TOKEN`; no custom token or signing secret was added.
+- `npm audit --omit=dev` reports no production dependencies. The full audit reports 36 moderate advisories in the release-tooling dependency tree and no high-severity advisories at review time. These development dependencies execute in the release workflow, so the findings remain relevant and should be rechecked before release.
+- `npm ci`, semantic-release CLI loading, configuration parsing, the Flutter version-code mapping test, and `actionlint` pass. The workflow has not yet run on GitHub, and no release was created.
 
 ### Release-artifact and device verification not performed
 

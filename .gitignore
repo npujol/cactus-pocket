@@ -19,6 +19,10 @@ build/
 **/GeneratedPluginRegistrant.java
 **/build/
 
+# Node.js release tooling
+node_modules/
+npm-debug.log*
+
 # IDE
 .idea/
 *.iml
